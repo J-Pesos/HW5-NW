@@ -1,4 +1,4 @@
-# Importing Dependencies
+ # Importing Dependencies
 import numpy as np
 from typing import Tuple
 
@@ -136,7 +136,7 @@ class NeedlemanWunsch:
         self._align_matrix = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
         self._gapA_matrix = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
         self._gapB_matrix = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
-        self._backtrace = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
+        self._back = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
 
         # TODO: Implement global alignment here
         
@@ -146,18 +146,41 @@ class NeedlemanWunsch:
         self._gapB_matrix[0, :] = [self.gap_open + i * self.gap_extend for i in range(self._len_seqB + 1)]
         
         # Look through each potential match and calculate the scores for each option.
-        for i in range(0, self._len_seqA):
-            for j in range(0, self._len_seqB):
-                base_A = seqA[i]
-                base_B = seqB[j]
+        for i in range(1, self._len_seqA + 1):
+            for j in range(1, self._len_seqB + 1):
+                base_A = seqA[i - 1]
+                base_B = seqB[j - 1]
                 match_score = self.sub_dict[(base_A, base_B)]
 
                 # Populate alignment matrix.
-                _match = self._align_matrix[i][j]
-                _matchIx = self._gapA_matrix[i][j]
-                _matchIy = self._gapB_matrix[i][j]
+                _match = self._align_matrix[i - 1][j - 1]
+                _matchIx = self._gapA_matrix[i - 1][j - 1]
+                _matchIy = self._gapB_matrix[i - 1][j - 1]
+                self._align_matrix[i][j] = match_score + max(_match, _matchIx, _matchIy)
 
-        		    
+                # Populate gap A matrix.
+                _gapAmatch = self._align_matrix[i][j - 1] + self.gap_open + self.gap_extend
+                _gapAIx = self._gapA_matrix[i][j - 1] + self.gap_extend
+                _gapAIy = self._gapB_matrix[i][j - 1] + self.gap_open + self.gap_extend
+                self._gapA_matrix[i][j] = max(_gapAmatch, _gapAIx, _gapAIy)
+
+                # Populate gap B matrix.
+                _gapBmatch = self._align_matrix[i-1][j] + self.gap_open + self.gap_extend
+                _gapBIx = self._gapA_matrix[i-1][j] + self.gap_open + self.gap_extend
+                _gapBIy = self._gapB_matrix[i-1][j] + self.gap_extend
+                self._gapB_matrix[i][j] = max(_gapBmatch, _gapBIy, _gapBIx)
+
+                # Remember maximum alignment score and which matrix it was derived from.
+                max_score = max(self._align_matrix[i][j], self._gapA_matrix[i][j], self._gapB_matrix[i][j])
+
+                # Use 0 to represent alignment matrix, 1 to represent gap A matrix, and 2 to represent gap B matrix.
+                if max_score == self._align_matrix[i][j]:
+                    self._back[i][j] = 0
+                elif max_score == self._gapA_matrix[i][j]:
+                    self._back[i][j] = 1
+                else:
+                    self._back[i][j] = 2
+
         return self._backtrace()
 
     def _backtrace(self) -> Tuple[float, str, str]:
@@ -174,10 +197,37 @@ class NeedlemanWunsch:
          	(alignment score, seqA alignment, seqB alignment) : Tuple[float, str, str]
          		the score and corresponding strings for the alignment of seqA and seqB
         """
-        pass
+        # Initialize sequences to match input values.
+        seqA = self._seqA
+        seqB = self._seqB
+
+        # Initialize values of i and j so that we start at bottom right corner of matrix.
+        i = len(self._seqA)
+        j = len(self._seqB)
+
+        # Initialize alignment score with value at bottom right of matrix.
+        self.alignment_score = max(self._align_matrix[i][j], self._gapA_matrix[i][j], self._gapB_matrix[i][j])
+        
+        while i != 0 and j != 0:
+            current_step = self._back[i][j]
+            if current_step == 0: # If originating from alignment matrix match bases at given index.
+                self.seqA_align = seqA[i - 1] + self.seqA_align
+                self.seqB_align = seqB[j - 1] + self.seqB_align
+                # Trace back to upper left box.
+                i -= 1
+                j -= 1
+            elif current_step == 1: # If originating from gap A matrix, place a gap in sequence A.
+                self.seqA_align = '-' + self.seqA_align
+                self.seqB_align = seqB[j - 1] + self.seqB_align
+                # Trace back to upper box.
+                j -= 1
+            else: # If originating from gap B matrix, place a gap in sequence B.
+                self.seqA_align = seqA[i - 1] + self.seqA_align
+                self.seqB_align = '-' + self.seqB_align
+                # Trace back to left box.
+                i -= 1
 
         return (self.alignment_score, self.seqA_align, self.seqB_align)
-
 
 def read_fasta(fasta_file: str) -> Tuple[str, str]:
     """
