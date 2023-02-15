@@ -38,7 +38,7 @@ def test_nw_alignment():
                         [-np.inf, -12., -13., -14.],
                         [-np.inf, -6., -14., -15.],
                         [-np.inf, -7., -7., -16.],
-                        [-np.inf, -8., -8., 6.] ] )
+                        [-np.inf, -8., -8., -6.] ] )
     
     assert np.array_equal(NW._gapB_matrix, correct_gapB), 'Gap B matrix not filled out correctly.'
 
