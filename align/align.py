@@ -128,11 +128,35 @@ class NeedlemanWunsch:
         
         # TODO: Initialize matrix private attributes for use in alignment
         # create matrices for alignment scores, gaps, and backtracing
-        pass
-
         
+        # Get length of both sequences to figure size of matrices.
+        self._len_seqA = len(seqA)
+        self._len_seqB = len(seqB)
+
+        self._align_matrix = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
+        self._gapA_matrix = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
+        self._gapB_matrix = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
+        self._backtrace = np.full( (self._len_seqA + 1, self._len_seqB + 1), -np.inf)
+
         # TODO: Implement global alignment here
-        pass      		
+        
+        # Initialize alignment and gap matrices with base cases.
+        self._align_matrix[0, 0] = 0
+        self._gapA_matrix[:, 0] = [self.gap_open + i * self.gap_extend for i in range(self._len_seqA + 1)]
+        self._gapB_matrix[0, :] = [self.gap_open + i * self.gap_extend for i in range(self._len_seqB + 1)]
+        
+        # Look through each potential match and calculate the scores for each option.
+        for i in range(0, self._len_seqA):
+            for j in range(0, self._len_seqB):
+                base_A = seqA[i]
+                base_B = seqB[j]
+                match_score = self.sub_dict[(base_A, base_B)]
+
+                # Populate alignment matrix.
+                _match = self._align_matrix[i][j]
+                _matchIx = self._gapA_matrix[i][j]
+                _matchIy = self._gapB_matrix[i][j]
+
         		    
         return self._backtrace()
 
